@@ -1,0 +1,492 @@
+
+pexels-rbrigant44-771881.jpg
+DATA CLEANING ON NEW YORK CITY AIRBNB LISTINGS
+
+As a part of my Data Analytics Internship at Oasis Infobyte, I have used a dataset from Kaggle (public domain) related to the AirBnB listings and metrics in New York City in the year 2019 to perform extensive data cleaning.
+
+The dataset consists of the following columns:
+
+id: Listing ID
+name: name/description of the airbnb listing
+host_id
+host_name
+neighbourhood_group: location of the listing
+neighbourhood: area
+latitude
+longitude
+room_type: listing space type
+price: in US dollars
+I have performed data cleaning in the following steps:
+
+Initial Data Exploration
+Imputation
+Date Parsing
+Outlier Detection and Handling
+Text preprocessing
+Label Encoding
+Column Removal
+Min Max Scaling
+Link to the dataset:
+
+https://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data/data
+
+INITIAL DATA EXPLORATION
+
+
+import pandas as pd
+from scipy.stats import zscore
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
+nltk.download("punkt")
+nltk.download("stopwords")
+nltk.download("wordnet")
+import string
+     
+[nltk_data] Downloading package punkt to /root/nltk_data...
+[nltk_data]   Package punkt is already up-to-date!
+[nltk_data] Downloading package stopwords to /root/nltk_data...
+[nltk_data]   Package stopwords is already up-to-date!
+[nltk_data] Downloading package wordnet to /root/nltk_data...
+[nltk_data]   Package wordnet is already up-to-date!
+
+df=pd.read_csv("AB_NYC_2019.csv")
+     
+
+df.head()
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365
+0	2539	Clean & quiet apt home by the park	2787	John	Brooklyn	Kensington	40.64749	-73.97237	Private room	149	1	9	2018-10-19	0.21	6	365
+1	2595	Skylit Midtown Castle	2845	Jennifer	Manhattan	Midtown	40.75362	-73.98377	Entire home/apt	225	1	45	2019-05-21	0.38	2	355
+2	3647	THE VILLAGE OF HARLEM....NEW YORK !	4632	Elisabeth	Manhattan	Harlem	40.80902	-73.94190	Private room	150	3	0	NaN	NaN	1	365
+3	3831	Cozy Entire Floor of Brownstone	4869	LisaRoxanne	Brooklyn	Clinton Hill	40.68514	-73.95976	Entire home/apt	89	1	270	2019-07-05	4.64	1	194
+4	5022	Entire Apt: Spacious Studio/Loft by central park	7192	Laura	Manhattan	East Harlem	40.79851	-73.94399	Entire home/apt	80	10	9	2018-11-19	0.10	1	0
+
+df.columns
+     
+Index(['id', 'name', 'host_id', 'host_name', 'neighbourhood_group',
+       'neighbourhood', 'latitude', 'longitude', 'room_type', 'price',
+       'minimum_nights', 'number_of_reviews', 'last_review',
+       'reviews_per_month', 'calculated_host_listings_count',
+       'availability_365'],
+      dtype='object')
+
+df.shape
+     
+(48895, 16)
+
+df.isnull().sum()
+     
+id                                    0
+name                                 16
+host_id                               0
+host_name                            21
+neighbourhood_group                   0
+neighbourhood                         0
+latitude                              0
+longitude                             0
+room_type                             0
+price                                 0
+minimum_nights                        0
+number_of_reviews                     0
+last_review                       10052
+reviews_per_month                 10052
+calculated_host_listings_count        0
+availability_365                      0
+dtype: int64
+
+df.isna().sum()
+     
+id                                    0
+name                                 16
+host_id                               0
+host_name                            21
+neighbourhood_group                   0
+neighbourhood                         0
+latitude                              0
+longitude                             0
+room_type                             0
+price                                 0
+minimum_nights                        0
+number_of_reviews                     0
+last_review                       10052
+reviews_per_month                 10052
+calculated_host_listings_count        0
+availability_365                      0
+dtype: int64
+
+df.info()
+     
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 48895 entries, 0 to 48894
+Data columns (total 16 columns):
+ #   Column                          Non-Null Count  Dtype  
+---  ------                          --------------  -----  
+ 0   id                              48895 non-null  int64  
+ 1   name                            48879 non-null  object 
+ 2   host_id                         48895 non-null  int64  
+ 3   host_name                       48874 non-null  object 
+ 4   neighbourhood_group             48895 non-null  object 
+ 5   neighbourhood                   48895 non-null  object 
+ 6   latitude                        48895 non-null  float64
+ 7   longitude                       48895 non-null  float64
+ 8   room_type                       48895 non-null  object 
+ 9   price                           48895 non-null  int64  
+ 10  minimum_nights                  48895 non-null  int64  
+ 11  number_of_reviews               48895 non-null  int64  
+ 12  last_review                     38843 non-null  object 
+ 13  reviews_per_month               38843 non-null  float64
+ 14  calculated_host_listings_count  48895 non-null  int64  
+ 15  availability_365                48895 non-null  int64  
+dtypes: float64(3), int64(7), object(6)
+memory usage: 6.0+ MB
+
+df.duplicated().sum()
+     
+0
+
+df.describe()
+     
+id	host_id	latitude	longitude	price	minimum_nights	number_of_reviews	reviews_per_month	calculated_host_listings_count	availability_365
+count	4.889500e+04	4.889500e+04	48895.000000	48895.000000	48895.000000	48895.000000	48895.000000	38843.000000	48895.000000	48895.000000
+mean	1.901714e+07	6.762001e+07	40.728949	-73.952170	152.720687	7.029962	23.274466	1.373221	7.143982	112.781327
+std	1.098311e+07	7.861097e+07	0.054530	0.046157	240.154170	20.510550	44.550582	1.680442	32.952519	131.622289
+min	2.539000e+03	2.438000e+03	40.499790	-74.244420	0.000000	1.000000	0.000000	0.010000	1.000000	0.000000
+25%	9.471945e+06	7.822033e+06	40.690100	-73.983070	69.000000	1.000000	1.000000	0.190000	1.000000	0.000000
+50%	1.967728e+07	3.079382e+07	40.723070	-73.955680	106.000000	3.000000	5.000000	0.720000	1.000000	45.000000
+75%	2.915218e+07	1.074344e+08	40.763115	-73.936275	175.000000	5.000000	24.000000	2.020000	2.000000	227.000000
+max	3.648724e+07	2.743213e+08	40.913060	-73.712990	10000.000000	1250.000000	629.000000	58.500000	327.000000	365.000000
+From this section of initial data exploration I have observed the following points:
+
+name, neighbourhood group, last_review and reviews_per_month columns have NaN values.
+There are no duplicate values in the dataset
+IMPUTATION
+
+
+df['name'].mode()
+     
+0    Hillside Hotel
+Name: name, dtype: object
+
+df['name']=df['name'].fillna("Hillside Hotel")
+     
+
+df.isnull().sum()
+     
+id                                    0
+name                                  0
+host_id                               0
+host_name                            21
+neighbourhood_group                   0
+neighbourhood                         0
+latitude                              0
+longitude                             0
+room_type                             0
+price                                 0
+minimum_nights                        0
+number_of_reviews                     0
+last_review                       10052
+reviews_per_month                 10052
+calculated_host_listings_count        0
+availability_365                      0
+dtype: int64
+
+df['host_name'].mode()
+     
+0    Michael
+Name: host_name, dtype: object
+
+df['host_name']=df['host_name'].fillna("Michael")
+     
+
+df['last_review'].mode()
+     
+0    2019-06-23
+Name: last_review, dtype: object
+
+df['last_review']=df['last_review'].fillna("2019-06-23")
+     
+
+df['reviews_per_month'].mean()
+     
+1.3732214298586618
+
+df['reviews_per_month']=df['reviews_per_month'].fillna(1.373)
+     
+
+df.isnull().sum()
+     
+id                                0
+name                              0
+host_id                           0
+host_name                         0
+neighbourhood_group               0
+neighbourhood                     0
+latitude                          0
+longitude                         0
+room_type                         0
+price                             0
+minimum_nights                    0
+number_of_reviews                 0
+last_review                       0
+reviews_per_month                 0
+calculated_host_listings_count    0
+availability_365                  0
+dtype: int64
+name, neighbourhood_group, last_review and reviews_per_month column has several NaN values before this section
+I imputed the NaN values in these columns by making use of statistical functions such as mean and mode
+DATE PARSING
+
+
+try:
+  df['last_review'] = pd.to_datetime(df['last_review'], format='%d/%m/%Y')
+except ValueError:
+  df['last_review'] = pd.to_datetime(df['last_review'],errors='coerce')
+     
+
+df['last_review']
+     
+0       2018-10-19
+1       2019-05-21
+2       2019-06-23
+3       2019-07-05
+4       2018-11-19
+           ...    
+48890   2019-06-23
+48891   2019-06-23
+48892   2019-06-23
+48893   2019-06-23
+48894   2019-06-23
+Name: last_review, Length: 48895, dtype: datetime64[ns]
+As a precaution, I brought the dates contained in the last_review column into a common format
+
+OUTLIER DETECTION AND HANDLING
+
+
+df['z_latitude']=0.0
+     
+
+df['z_latitude']=zscore(df['latitude'])
+     
+
+condition_to_drop = (df['z_latitude'] > 3.0)
+df = df[~condition_to_drop]
+condition_to_drop = (df['z_latitude'] < -3.0)
+df = df[~condition_to_drop]
+     
+
+df[(df['z_latitude'] < -3.0)]
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude
+
+df[(df['z_latitude'] > 3.0)]
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude
+
+df['z_longitude']=0.0
+     
+
+df['z_longitude']=zscore(df['longitude'])
+     
+
+df['z_longitude']
+     
+0       -0.444611
+1       -0.694361
+2        0.222924
+3       -0.168352
+4        0.177136
+           ...   
+48890    0.046565
+48891    0.414180
+48892    0.074607
+48893   -0.855385
+48894   -0.816170
+Name: z_longitude, Length: 48796, dtype: float64
+
+df.head(3)
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude	z_longitude
+0	2539	Clean & quiet apt home by the park	2787	John	Brooklyn	Kensington	40.64749	-73.97237	Private room	149	1	9	2018-10-19	0.210	6	365	-1.493849	-0.444611
+1	2595	Skylit Midtown Castle	2845	Jennifer	Manhattan	Midtown	40.75362	-73.98377	Entire home/apt	225	1	45	2019-05-21	0.380	2	355	0.452436	-0.694361
+2	3647	THE VILLAGE OF HARLEM....NEW YORK !	4632	Elisabeth	Manhattan	Harlem	40.80902	-73.94190	Private room	150	3	0	2019-06-23	1.373	1	365	1.468399	0.222924
+
+condition_to_drop=(df['z_longitude']<-3.0)
+df=df[~condition_to_drop]
+condition_to_drop=(df['z_longitude']>3.0)
+df=df[~condition_to_drop]
+     
+
+df[df['z_longitude'] < -3.0]
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude	z_longitude
+
+df[df['z_longitude'] > 3.0]
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude	z_longitude
+
+df['z_price']=0
+     
+<ipython-input-957-058875165b37>:1: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df['z_price']=0
+
+df['z_price']=zscore(df['price'])
+     
+<ipython-input-958-1d5381fa85d0>:1: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df['z_price']=zscore(df['price'])
+
+df['z_price']
+     
+0       -0.020398
+1        0.294504
+2       -0.016254
+3       -0.269004
+4       -0.306295
+           ...   
+48890   -0.347730
+48891   -0.472033
+48892   -0.161275
+48893   -0.409881
+48894   -0.264861
+Name: z_price, Length: 47546, dtype: float64
+
+condition_to_be_checked=(df['z_price']>3.0)
+     
+
+df[df['z_price']>3.0]
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude	z_longitude	z_price
+496	174966	Luxury 2Bed/2.5Bath Central Park View	836168	Henry	Manhattan	Upper West Side	40.77350	-73.98697	Entire home/apt	2000	30	30	2018-05-05	0.330	11	0	0.817009	-0.764467	7.649115
+762	273190	6 Bedroom Landmark West Village Townhouse	605463	West Village	Manhattan	West Village	40.73301	-74.00268	Entire home/apt	1300	5	28	2018-09-25	0.310	4	297	0.074476	-1.108641	4.748705
+946	363673	Beautiful 3 bedroom in Manhattan	256239	Tracey	Manhattan	Upper West Side	40.80142	-73.96931	Private room	3000	7	0	2019-06-23	1.373	1	365	1.329025	-0.377573	11.792557
+1105	468613	$ (Phone number hidden by Airbnb) weeks - room f	2325861	Cynthia	Manhattan	Lower East Side	40.72152	-73.99279	Private room	1300	1	0	2019-06-23	1.373	1	0	-0.136236	-0.891971	4.748705
+1414	634353	Luxury 1Bed with Central Park Views	836168	Henry	Manhattan	Upper West Side	40.77428	-73.98594	Entire home/apt	1000	30	44	2015-09-28	0.530	11	364	0.831313	-0.741902	3.505672
+...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...
+48301	36186719	Private Bedroom in the Heart of Chelsea!	268920555	Terrence Jake	Manhattan	Chelsea	40.74531	-73.99454	Private room	999	30	0	2019-06-23	1.373	1	270	0.300042	-0.930310	3.501528
+48304	36189195	Next to Times Square/Javits/MSG! Amazing 1BR!	270214015	Rogelio	Manhattan	Hell's Kitchen	40.75533	-73.99866	Entire home/apt	2999	30	0	2019-06-23	1.373	1	222	0.483795	-1.020571	11.788414
+48305	36189257	2BR Near Museum Mile! Upper East Side!	272166348	Mary Rotsen	Manhattan	Upper East Side	40.78132	-73.95262	Entire home/apt	1999	30	0	2019-06-23	1.373	1	270	0.960418	-0.011929	7.644971
+48523	36308562	Tasteful & Trendy Brooklyn Brownstone, near Train	217732163	Sandy	Brooklyn	Bedford-Stuyvesant	40.68767	-73.95805	Entire home/apt	1369	1	0	2019-06-23	1.373	1	349	-0.757001	-0.130889	5.034602
+48535	36311055	Stunning & Stylish Brooklyn Luxury, near Train	245712163	Urvashi	Brooklyn	Bedford-Stuyvesant	40.68245	-73.93417	Entire home/apt	1749	1	0	2019-06-23	1.373	1	303	-0.852729	0.392272	6.609110
+378 rows × 19 columns
+
+
+df[df['z_price']<-3.0]
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude	z_longitude	z_price
+Outliers can cause problems in model building so I decided to remove them from the dataset
+I utilized z score technique to detect outliers in latitude, longitude and price columns as they are the most crucial columns to the analysis.
+If z score lies between -3 and +3 then the data point is not an outlier otherwise it is classified as an outlier.
+I created columns of z_latitude and z_longitude to store the z-scores of latitude and longitude columns respectively.
+I removed the rows containing z_latitude > 3 and z_latitude<-3
+There were no rows for z_longitude<-3.
+I removed the rows where z_longitude>3
+I created columns of z_price to store the z-scores of price column .
+Since most of the outliers detected through the price column have names such as "luxury" and "trendy" and might have a reason for their high price, I will be keeping the outliers in the price columns as it is and not deal with them.
+There were no rows for z_price<-3
+TEXT PRE PROCESSING
+
+
+def remove_stopwords(text):
+    token_text = word_tokenize(text)
+    filter_text = [word for word in token_text if word.lower() not in stopwords.words('english')]
+    clean_text = ' '.join(filter_text)
+    return clean_text
+     
+
+df['name'].head(2)
+     
+0    Clean & quiet apt home by the park
+1                 Skylit Midtown Castle
+Name: name, dtype: object
+
+df['name']=df['name'].apply(remove_stopwords)
+     
+
+df['name'].head(2)
+     
+0    Clean & quiet apt home park
+1          Skylit Midtown Castle
+Name: name, dtype: object
+
+punc=string.punctuation
+     
+
+punc
+     
+'!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+
+def remove_punctuations(text):
+  clean_text=""
+  for c in text:
+    if c not in  punc:
+      clean_text=clean_text+""+c
+  return clean_text
+
+
+     
+
+df['name']=df['name'].apply(remove_punctuations)
+df['host_name']=df['host_name'].apply(remove_punctuations)
+df['neighbourhood_group']=df['neighbourhood_group'].apply(remove_punctuations)
+df['neighbourhood']=df['neighbourhood'].apply(remove_punctuations)
+
+     
+
+df.head(2)
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude	z_longitude	z_price
+0	2539	Clean quiet apt home park	2787	John	Brooklyn	Kensington	40.64749	-73.97237	Private room	149	1	9	2018-10-19	0.21	6	365	-1.493849	-0.444611	-0.020398
+1	2595	Skylit Midtown Castle	2845	Jennifer	Manhattan	Midtown	40.75362	-73.98377	Entire home/apt	225	1	45	2019-05-21	0.38	2	355	0.452436	-0.694361	0.294504
+
+def to_lower_case(text):
+  return text.lower()
+     
+
+df['name']=df['name'].apply(to_lower_case)
+df['host_name']=df['host_name'].apply(to_lower_case)
+df['neighbourhood_group']=df['neighbourhood_group'].apply(to_lower_case)
+df['neighbourhood']=df['neighbourhood'].apply(to_lower_case)
+df['room_type']=df['room_type'].apply(to_lower_case)
+     
+
+df.head(2)
+     
+id	name	host_id	host_name	neighbourhood_group	neighbourhood	latitude	longitude	room_type	price	minimum_nights	number_of_reviews	last_review	reviews_per_month	calculated_host_listings_count	availability_365	z_latitude	z_longitude	z_price
+0	2539	clean quiet apt home park	2787	john	brooklyn	kensington	40.64749	-73.97237	private room	149	1	9	2018-10-19	0.21	6	365	-1.493849	-0.444611	-0.020398
+1	2595	skylit midtown castle	2845	jennifer	manhattan	midtown	40.75362	-73.98377	entire home/apt	225	1	45	2019-05-21	0.38	2	355	0.452436	-0.694361	0.294504
+In this section, I have dealth with cleaning the text based columns such as name, host_name, neighbourhood_group and neighbourhood.
+I removed stopwords from the columns to concentrate on the more important words
+I also included a punctuation removal function
+I converted all these textual columns into lower case for easy handling.
+COLUMN REMOVAL
+
+
+df.columns
+     
+Index(['id', 'name', 'host_id', 'host_name', 'neighbourhood_group',
+       'neighbourhood', 'latitude', 'longitude', 'room_type', 'price',
+       'minimum_nights', 'number_of_reviews', 'last_review',
+       'reviews_per_month', 'calculated_host_listings_count',
+       'availability_365', 'z_latitude', 'z_longitude', 'z_price'],
+      dtype='object')
+
+df=df.drop(['id'],axis=1)
+df=df.drop(['host_name'],axis=1)
+df=df.drop(['z_latitude'],axis=1)
+df=df.drop(['z_longitude'],axis=1)
+df=df.drop(['z_price'],axis=1)
+     
+
+df.columns
+     
+Index(['name', 'host_id', 'neighbourhood_group', 'nei
